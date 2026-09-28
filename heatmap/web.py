@@ -41,9 +41,10 @@ _TEMPLATE = """<!doctype html>
 <script>
 const TRACKS = __TRACKS__;
 const map = L.map('map', { preferCanvas: true, worldCopyJump: true });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO', subdomains: 'abcd', maxZoom: 19
-}).addTo(map);
+const TILES = __TILES__;
+if (TILES) {
+  L.tileLayer(TILES.url, { attribution: TILES.attribution, subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+}
 
 // A canvas renderer whose strokes add light instead of painting over each other.
 const Glow = L.Canvas.extend({
@@ -85,7 +86,9 @@ def simplify(seg: np.ndarray, min_step_m: float = 8.0) -> np.ndarray:
 
 
 def build_html(activities, *, title: str, subtitle: str = "", bounds_latlon=None,
-               color: str = "#ff6a1f", opacity: float = 0.18, min_step_m: float = 8.0) -> str:
+               tiles: tuple[str, str] | None = None, color: str = "#ff6a1f",
+               opacity: float = 0.18, min_step_m: float = 8.0) -> str:
+    """Build the page. ``tiles`` is ``(url_template, attribution)`` or None for no map."""
     tracks = []
     for act in activities:
         for seg in act.segments:
@@ -97,7 +100,9 @@ def build_html(activities, *, title: str, subtitle: str = "", bounds_latlon=None
         bounds_latlon = [allp.min(axis=0).tolist(), allp.max(axis=0).tolist()]
 
     esc = lambda s: (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")  # noqa: E731
+    tiles_js = {"url": tiles[0], "attribution": esc(tiles[1])} if tiles else None
     return (_TEMPLATE
+            .replace("__TILES__", json.dumps(tiles_js))
             .replace("__TRACKS__", json.dumps(tracks, separators=(",", ":")))
             .replace("__BOUNDS__", json.dumps(bounds_latlon))
             .replace("__TITLE__", esc(title))

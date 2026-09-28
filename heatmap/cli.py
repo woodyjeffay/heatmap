@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -27,6 +28,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("inputs", nargs="+", help="activity files and/or directories (searched recursively)")
     p.add_argument("-o", "--output", default="heatmap.png", help="output image (default: %(default)s)")
     p.add_argument("--html", metavar="FILE", help="also write an interactive, zoomable map to FILE")
+    p.add_argument("--html-map", default="carto-dark", metavar="MAP",
+                   help=f"background map for --html: {', '.join(PROVIDERS)}, none, or a tile URL "
+                        "template (default: %(default)s)")
+    p.add_argument("--map-key", default=os.environ.get("RUN_HEATMAP_MAP_KEY"), metavar="KEY",
+                   help="API key for map tiles that need one (stadia-dark, maptiler-dark, or {key} "
+                        "in a URL template); defaults to $RUN_HEATMAP_MAP_KEY")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     f = p.add_argument_group("which activities")
@@ -187,8 +194,9 @@ def main(argv: list[str] | None = None) -> int:
     base = attribution = None
     if args.basemap != "none":
         try:
-            _, attribution = resolve_provider(args.basemap)
-            base = fetch_basemap(bbox, width, height, args.basemap, dim=args.basemap_dim)
+            _, attribution = resolve_provider(args.basemap, args.map_key)
+            base = fetch_basemap(bbox, width, height, args.basemap, dim=args.basemap_dim,
+                                 key=args.map_key)
         except Exception as exc:  # noqa: BLE001 - a missing basemap shouldn't sink the render
             _log(f"  basemap unavailable ({exc}); drawing without it")
             attribution = None
@@ -217,10 +225,17 @@ def main(argv: list[str] | None = None) -> int:
     _log(f"Wrote {out}  ({subtitle})" if subtitle else f"Wrote {out}")
 
     if args.html:
+        tiles = None
+        if args.html_map != "none":
+            try:
+                tiles = resolve_provider(args.html_map, args.map_key)
+            except ValueError as exc:
+                _log(f"  {exc}; the interactive map will have no background")
         lat0, lon0 = from_world(bbox.x0, bbox.y1)
         lat1, lon1 = from_world(bbox.x1, bbox.y0)
         html = build_html(activities, title=args.title or "Every Run", subtitle=subtitle,
-                          bounds_latlon=[[float(lat0), float(lon0)], [float(lat1), float(lon1)]])
+                          bounds_latlon=[[float(lat0), float(lon0)], [float(lat1), float(lon1)]],
+                          tiles=tiles)
         Path(args.html).write_text(html, encoding="utf-8")
         _log(f"Wrote {args.html}")
     return 0

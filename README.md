@@ -37,6 +37,37 @@ run-heatmap ~/Downloads/strava_export -o poster.png --poster a2 --title "London"
 world down to one street. Overlapping routes add their light together, so
 the most-run streets glow white. Open it in any browser.
 
+### The map behind the interactive page
+
+The page draws your routes over a dark street map from CARTO, which needs no
+key. If the map area shows a message instead of streets (for example "API key
+required"), pick another map with `--html-map`:
+
+| `--html-map` | Key? |
+|---|---|
+| `carto-dark` *(default)* | No key. |
+| `stadia-dark` | No key when the page is opened from `http://localhost` (see below); a free key from [stadiamaps.com](https://stadiamaps.com) otherwise. |
+| `maptiler-dark` | Always needs a free key from [maptiler.com](https://www.maptiler.com/cloud/). |
+| `none` | No background map: just your glowing routes on black. |
+| a URL template | Any tile server, e.g. `https://tiles.example.com/{z}/{x}/{y}.png?token={key}`. |
+
+Put the key on the command line with `--map-key`, or set it once in your
+shell:
+
+```sh
+run-heatmap runs/ -o heatmap.png --html heatmap.html --html-map maptiler-dark --map-key YOUR_KEY
+
+export RUN_HEATMAP_MAP_KEY=YOUR_KEY   # add to ~/.zshrc to keep it
+```
+
+The key is written into the HTML file, so don't share that file publicly.
+Some tile services also refuse pages opened straight from disk (`file://`).
+Serving the folder locally fixes that:
+
+```sh
+python -m http.server 8000     # then open http://localhost:8000/heatmap.html
+```
+
 ## Getting your GPS files
 
 run-heatmap reads **GPX**, **TCX** and **FIT** files, including gzipped
@@ -67,7 +98,7 @@ cycling, or `--strict-sport` to drop files with no sport recorded.
 | `--scale` | How run counts become brightness: `log` (default, balanced), `linear` (only the busiest routes stand out), `equalize` (uses the whole colour ramp). |
 | `--glow` | Halo strength. `0` gives crisp lines; `1.5` gives more neon. |
 | `--line-width` | Line width in pixels. By default it scales with the image size. |
-| `--basemap` | Draws streets underneath: `carto-dark`, `carto-light`, `osm`, or any `{z}/{x}/{y}` tile URL. Tiles are cached in `~/.cache/run-heatmap` and an attribution line is added. Off by default, because the glowing routes usually outline the city on their own. |
+| `--basemap` | Draws streets underneath the PNG: `carto-dark`, `carto-light`, `osm`, `stadia-dark`, `maptiler-dark` (use `--map-key`), or any `{z}/{x}/{y}` tile URL. Tiles are cached in `~/.cache/run-heatmap` and an attribution line is added. Off by default, because the glowing routes usually outline the city on their own. |
 | `--trim-ends M` | **Privacy.** Hides the first and last M metres of every activity, so your front door isn't marked on a poster you share. |
 | `--since / --until` | Only activities between two dates (`YYYY-MM-DD`), e.g. one poster per year. |
 | `--title / --subtitle` | Poster text. The subtitle defaults to e.g. `421 RUNS · 3,310 KM · 2019 – 2022`; pass `--subtitle ""` to hide it. |

@@ -297,3 +297,28 @@ def test_cli_poster(tmp_path):
 def test_cli_nothing_to_draw(tmp_path):
     d = _write_runs(tmp_path)
     assert cli.main([str(d), "-o", str(tmp_path / "x.png"), "--sport", "swim", "--strict-sport"]) == 1
+
+
+def test_map_keys():
+    from heatmap.basemap import resolve_provider
+
+    url, _ = resolve_provider("stadia-dark", "abc 123")
+    assert url.endswith("{y}.png?api_key=abc%20123")
+    url, _ = resolve_provider("stadia-dark")  # optional key is dropped
+    assert url.endswith("{y}.png") and "{key}" not in url
+    with pytest.raises(ValueError, match="needs an API key"):
+        resolve_provider("maptiler-dark")
+    url, _ = resolve_provider("https://t.example.com/{z}/{x}/{y}.png?token={key}", "K")
+    assert url.endswith("?token=K")
+
+
+def test_cli_html_map_choice(tmp_path):
+    d = _write_runs(tmp_path)
+    html = tmp_path / "map.html"
+    args = [str(d), "-o", str(tmp_path / "o.png"), "--width", "200", "--html", str(html)]
+    assert cli.main(args + ["--html-map", "none"]) == 0
+    assert "const TILES = null;" in html.read_text()
+    assert cli.main(args + ["--html-map", "maptiler-dark", "--map-key", "SECRET"]) == 0
+    assert "dataviz-dark/256/{z}/{x}/{y}.png?key=SECRET" in html.read_text()
+    assert cli.main(args) == 0
+    assert "basemaps.cartocdn.com" in html.read_text()
