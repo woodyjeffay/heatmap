@@ -1,9 +1,4 @@
-__pycache__/
-*.egg-info/
-.pytest_cache/
-build/
-dist/
-.venv/
-# Your own activity data and renders stay local.
+.DS_Store
+Thumbs.db
+# Your own activity files, if you keep test data next to the site.
 /data/
-/out/
