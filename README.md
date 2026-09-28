@@ -34,7 +34,7 @@ python3 -m http.server 8000
 
 ## Street map API keys
 
-The default map Stadia does not require an API key. However CARTO and MapTiler do.
+The default map, Stadia, does not require an API key. However CARTO and MapTiler do.
 
 1. Get your free key here:
 
