@@ -73,21 +73,6 @@ vendor/           Leaflet (maps) and fflate (unzipping)
 docs/             README images
 ```
 
-## How it works
-
-1. **Parse.** GPX, TCX and FIT files are read into lists of latitude and
-   longitude points. Where the GPS jumps a long way (signal loss, or a pause
-   and move), the line is split so no straight jumps cross the map.
-2. **Project.** Points use Web Mercator, the same projection as web maps,
-   so the routes line up with the street map.
-3. **Accumulate.** Each run is drawn once and added to a counter, so every
-   pixel counts how many runs passed through it. Running the same loop three
-   times in one run counts once.
-4. **Tone map.** Counts become brightness on a log scale, so a route you ran
-   once stays visible next to one you ran hundreds of times.
-5. **Glow and colour.** Blurred copies of the lines make the halo, and the
-   brightness picks a colour from the palette.
-
 ## Browser notes
 
 - Works in current Chrome, Edge, Firefox and Safari.
