@@ -10,7 +10,6 @@
 window.RUN_HEATMAP_CONFIG = {
   mapKeys: {
     carto: "",
-    stadia: "",
     maptiler: "",
   },
 
