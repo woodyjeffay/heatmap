@@ -70,7 +70,6 @@ js/
 ├── map.js        the interactive glowing map
 └── heat.js       poster rendering
 vendor/           Leaflet (maps) and fflate (unzipping)
-docs/             README images
 ```
 
 ## Browser notes
