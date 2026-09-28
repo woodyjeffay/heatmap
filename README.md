@@ -6,7 +6,7 @@ Drop in the export you downloaded from Strava, Garmin or another service, and
 every route is drawn on top of the others. Streets you ran once show as a
 faint trace, and the ones you run every week glow brightest.
 
-### Where people get their GPS files
+### Get your GPS files
 
 | Service | How to export |
 |---|---|
@@ -39,7 +39,7 @@ python3 -m http.server 8000
 ## Street map API keys
 
 The routes are drawn over a dark street map, and that map comes from a
-tile service. **Since 23 September 2026, CARTO's maps (the default) need a
+tile service. **CARTO's maps (the default) need a
 free API key.** Without one, every map tile just says "API KEY REQUIRED".
 Your routes and posters still work, just without the streets underneath.
 
