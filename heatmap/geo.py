@@ -84,6 +84,16 @@ class BBox:
         dy = self.height * fraction
         return BBox(self.x0 - dx, self.y0 - dy, self.x1 + dx, self.y1 + dy)
 
+    def at_least_km(self, km: float) -> "BBox":
+        """Grow the box (keeping its centre) to cover at least ``km`` each way."""
+        cx, cy = self.center
+        lat, _ = from_world(cx, cy)
+        # Web Mercator world units per metre at this latitude.
+        per_m = 1 / (2 * math.pi * EARTH_RADIUS_M * math.cos(math.radians(float(lat))))
+        size = km * 1000 * per_m
+        w, h = max(self.width, size), max(self.height, size)
+        return BBox(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+
     def fit_aspect(self, aspect: float) -> "BBox":
         """Grow the box (keeping its centre) until width / height == aspect."""
         cx, cy = self.center

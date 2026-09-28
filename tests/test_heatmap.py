@@ -322,3 +322,62 @@ def test_cli_html_map_choice(tmp_path):
     assert "dataviz-dark/256/{z}/{x}/{y}.png?key=SECRET" in html.read_text()
     assert cli.main(args) == 0
     assert "basemaps.cartocdn.com" in html.read_text()
+
+
+# --- FIT files and zip archives ----------------------------------------------
+
+DATA = __import__("pathlib").Path(__file__).parent / "data"
+
+
+def test_garmin_style_fit():
+    act = load_activity(DATA / "garmin_run.fit")
+    assert act.sport == "run"
+    assert act.start_time.year == 2024
+    # 200 records, some without a GPS fix, as real watches write them
+    assert act.segments[0].shape == (188, 2)
+    assert act.segments[0][0] == pytest.approx([51.5, -0.1], abs=1e-6)
+
+
+def test_generic_sport_counts_as_unknown():
+    assert load_activity(DATA / "garmin_generic.fit").sport is None
+    assert normalize_sport("generic") is None
+
+
+def test_truncated_fit_keeps_points(tmp_path):
+    data = (DATA / "garmin_run.fit").read_bytes()
+    p = tmp_path / "cut.fit"
+    p.write_bytes(data[: len(data) // 2])
+    assert len(load_activity(p).segments[0]) > 20
+
+
+def test_nested_zip_like_garmin_export(tmp_path):
+    import zipfile
+
+    inner = io.BytesIO()
+    with zipfile.ZipFile(inner, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(DATA / "garmin_run.fit", "me_1.fit")
+        z.writestr("me_2.gpx", GPX)
+        z.writestr("__MACOSX/._me_1.fit", b"junk")
+    outer = tmp_path / "export.zip"
+    with zipfile.ZipFile(outer, "w") as z:
+        z.writestr("DI_CONNECT/DI-Connect-Uploaded-Files/UploadedFiles_0-_Part1.zip", inner.getvalue())
+        z.writestr("DI_CONNECT/other.json", "{}")
+
+    sources = find_activity_files([outer])
+    assert sorted(s.name for s in sources) == ["me_1.fit", "me_2.gpx"]
+    from heatmap.parsers import iter_activities
+    results = dict((s.name, a) for s, a in iter_activities(sources))
+    assert results["me_1.fit"].sport == "run" and results["me_2.gpx"].sport == "run"
+
+
+def test_cli_reads_gpx_and_fit_together(tmp_path, capsys):
+    d = _write_runs(tmp_path)
+    (d / "watch.fit").write_bytes((DATA / "garmin_run.fit").read_bytes())
+    assert cli.main([str(d), "-o", str(tmp_path / "o.png"), "--width", "300"]) == 0
+    assert "Using 7 activities" in capsys.readouterr().err
+
+
+def test_cli_single_straight_route_has_sane_size(tmp_path):
+    out = tmp_path / "o.png"
+    assert cli.main([str(DATA / "garmin_run.fit"), "-o", str(out), "--width", "300"]) == 0
+    assert Image.open(out).size == (300, 600)

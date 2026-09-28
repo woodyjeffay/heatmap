@@ -70,19 +70,20 @@ python -m http.server 8000     # then open http://localhost:8000/heatmap.html
 
 ## Getting your GPS files
 
-run-heatmap reads **GPX**, **TCX** and **FIT** files, including gzipped
-ones (`.gpx.gz`, `.fit.gz`, …). Pass files or folders; folders are searched
-recursively.
+run-heatmap reads **GPX**, **TCX** and **FIT** files, mixed together in any
+combination, including gzipped ones (`.gpx.gz`, `.fit.gz`, …). Pass files,
+folders (searched recursively) or **.zip archives** straight from the export.
+Zips inside zips are read too, so there's no need to unzip anything.
 
 | Service | How to export |
 |---|---|
-| **Strava** | Settings → My Account → *Download or Delete Your Account* → *Request your archive*. Unzip it and pass the whole folder. Its `activities.csv` is read automatically, which tells run-heatmap which files are runs. |
-| **Garmin Connect** | Account settings → *Data Management* → *Export Your Data*. The FIT files are inside `DI_CONNECT/DI-Connect-Uploaded-Files` (unzip the inner zips). |
+| **Strava** | Settings → My Account → *Download or Delete Your Account* → *Request your archive*. Pass the downloaded `.zip` or the unzipped folder. Its `activities.csv` is read automatically, which tells run-heatmap which files are runs. |
+| **Garmin Connect** | Account settings → *Data Management* → *Export Your Data*. Pass the downloaded `.zip` as it is: the FIT files in the zips inside `DI_CONNECT/DI-Connect-Uploaded-Files` are found automatically. |
 | **Apple Health** | Health app → profile picture → *Export All Health Data*. Unzip and pass `apple_health_export/workout-routes`. |
 | **Others** (Coros, Polar, Suunto, Runkeeper, Nike Run Club via third-party tools, …) | Anything that gives you GPX, TCX or FIT works. |
 
 By default only runs are drawn (`--sport run`). Files that don't record a
-sport are kept. Use `--sport all` to include everything, `--sport ride` for
+sport, or only say `generic`, are kept. Use `--sport all` to include everything, `--sport ride` for
 cycling, or `--strict-sport` to drop files with no sport recorded.
 
 ## Options that matter most

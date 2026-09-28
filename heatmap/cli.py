@@ -174,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         _log("Nothing to draw. Try --sport all, or check the files contain GPS tracks.")
         return 1
 
-    bbox = select_region(args, activities)
+    bbox = select_region(args, activities).at_least_km(1.0)
     subtitle = stats_line(activities, sport) if args.subtitle is None else args.subtitle
     palette = args.palette
     background = args.background or DEFAULT_BACKGROUNDS.get(palette, "#050508")
@@ -186,7 +186,8 @@ def main(argv: list[str] | None = None) -> int:
         width, height = lay.map_size
     else:
         width = args.width
-        aspect = bbox.width / bbox.height if bbox.height > 0 else 1.0
+        # Keep a single out-and-back route from making a 1:300 sliver of an image.
+        aspect = min(max(bbox.width / bbox.height, 0.5), 2.0)
         height = args.height or max(1, int(round(width / aspect)))
     bbox = bbox.fit_aspect(width / height)
     _log(f"Rendering {width:,} x {height:,} px ...")

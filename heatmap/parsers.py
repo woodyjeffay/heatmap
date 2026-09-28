@@ -7,15 +7,18 @@ matching files, since Strava's own GPX files usually omit the activity type.
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import gzip
 import io
+import itertools
 import os
 import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, NamedTuple, Union
 
 import numpy as np
 
@@ -25,6 +28,12 @@ SUFFIXES = (".gpx", ".tcx", ".fit")
 
 # Strava GPX files encode the sport as a number; 9 is running.
 _STRAVA_TYPE_CODES = {"1": "ride", "4": "hike", "9": "run", "10": "walk", "16": "swim"}
+
+# FIT "sport" enum values, for files whose sport comes back as a bare number.
+_FIT_SPORTS = {0: None, 1: "run", 2: "ride", 5: "swim", 11: "walk", 17: "hike"}
+
+# Labels that say nothing about the sport; treated like no sport at all.
+_VAGUE_SPORTS = {"generic", "all", "other", "workout", "training", "unknown", "activity", "sport"}
 
 
 @dataclass
@@ -61,6 +70,8 @@ def normalize_sport(value: str | None) -> str | None:
     if v in _STRAVA_TYPE_CODES:
         return _STRAVA_TYPE_CODES[v]
     v = v.replace("_", " ")
+    if v in _VAGUE_SPORTS:
+        return None
     if "run" in v or v == "jog":
         return "run"
     if "ride" in v or "cycl" in v or "bik" in v:
@@ -82,26 +93,74 @@ def _strip_gz(name: str) -> str:
     return name[:-3] if name.lower().endswith(".gz") else name
 
 
-def is_activity_file(path: Path) -> bool:
-    return _strip_gz(path.name).lower().endswith(SUFFIXES)
+def is_activity_file(path: Path | str) -> bool:
+    name = path.name if isinstance(path, Path) else str(path).rsplit("/", 1)[-1]
+    return _strip_gz(name).lower().endswith(SUFFIXES) and not name.startswith("._")
 
 
-def find_activity_files(inputs: Iterable[str | os.PathLike]) -> list[Path]:
-    """Expand files and directories (searched recursively) into activity files."""
-    found: list[Path] = []
+class ZipMember(NamedTuple):
+    """An activity file inside a .zip, possibly inside another .zip."""
+
+    archive: str
+    member: str
+    inner: str | None = None  # name of the nested zip holding ``member``
+
+    @property
+    def name(self) -> str:
+        return self.member.rsplit("/", 1)[-1]
+
+    def __str__(self) -> str:
+        middle = f"{self.inner}!" if self.inner else ""
+        return f"{self.archive}!{middle}{self.member}"
+
+
+Source = Union[Path, ZipMember]
+
+
+def _zip_members(path: Path) -> list[ZipMember]:
+    """Activity files in a zip, looking one level into zips inside it.
+
+    Garmin's export, for example, is a zip of zips of FIT files.
+    """
+    out: list[ZipMember] = []
+    try:
+        with zipfile.ZipFile(path) as z:
+            for name in z.namelist():
+                if name.endswith("/") or "__MACOSX" in name:
+                    continue
+                if is_activity_file(name):
+                    out.append(ZipMember(str(path), name))
+                elif name.lower().endswith(".zip"):
+                    with z.open(name) as fh, zipfile.ZipFile(fh) as inner:
+                        out.extend(ZipMember(str(path), n, name) for n in inner.namelist()
+                                   if is_activity_file(n) and "__MACOSX" not in n)
+    except zipfile.BadZipFile:
+        pass
+    return out
+
+
+def find_activity_files(inputs: Iterable[str | os.PathLike]) -> list[Source]:
+    """Expand files, directories (searched recursively) and .zip archives."""
+    found: list[Source] = []
     for item in inputs:
         p = Path(item)
         if p.is_dir():
-            found.extend(sorted(f for f in p.rglob("*") if f.is_file() and is_activity_file(f)))
+            for f in sorted(p.rglob("*")):
+                if not f.is_file():
+                    continue
+                if is_activity_file(f):
+                    found.append(f)
+                elif f.suffix.lower() == ".zip":
+                    found.extend(_zip_members(f))
         elif p.is_file():
-            found.append(p)
+            found.extend(_zip_members(p) if p.suffix.lower() == ".zip" else [p])
         else:
             raise FileNotFoundError(f"No such file or directory: {p}")
     return found
 
 
 def load_strava_index(inputs: Iterable[str | os.PathLike]) -> dict[str, dict]:
-    """Read ``activities.csv`` from any input directory of a Strava export.
+    """Read ``activities.csv`` from a Strava export (a folder or the .zip).
 
     Returns a mapping from activity file base name (without ``.gz``) to a dict
     with ``sport``, ``name`` and ``start_time``.
@@ -109,21 +168,33 @@ def load_strava_index(inputs: Iterable[str | os.PathLike]) -> dict[str, dict]:
     index: dict[str, dict] = {}
     for item in inputs:
         p = Path(item)
-        if not p.is_dir():
-            continue
-        for csv_path in p.rglob("activities.csv"):
-            with open(csv_path, newline="", encoding="utf-8-sig") as fh:
-                for row in csv.DictReader(fh):
-                    filename = (row.get("Filename") or "").strip()
-                    if not filename:
-                        continue
-                    key = _strip_gz(Path(filename).name)
-                    index[key] = {
-                        "sport": normalize_sport(row.get("Activity Type")),
-                        "name": (row.get("Activity Name") or "").strip() or None,
-                        "start_time": _parse_strava_date(row.get("Activity Date")),
-                    }
+        if p.is_dir():
+            for csv_path in p.rglob("activities.csv"):
+                with open(csv_path, newline="", encoding="utf-8-sig") as fh:
+                    _read_strava_csv(fh, index)
+        elif p.is_file() and p.suffix.lower() == ".zip":
+            try:
+                with zipfile.ZipFile(p) as z:
+                    for name in z.namelist():
+                        if name.rsplit("/", 1)[-1] == "activities.csv":
+                            with z.open(name) as raw:
+                                _read_strava_csv(io.TextIOWrapper(raw, encoding="utf-8-sig", newline=""), index)
+            except zipfile.BadZipFile:
+                pass
     return index
+
+
+def _read_strava_csv(fh, index: dict[str, dict]) -> None:
+    for row in csv.DictReader(fh):
+        filename = (row.get("Filename") or "").strip()
+        if not filename:
+            continue
+        key = _strip_gz(Path(filename).name)
+        index[key] = {
+            "sport": normalize_sport(row.get("Activity Type")),
+            "name": (row.get("Activity Name") or "").strip() or None,
+            "start_time": _parse_strava_date(row.get("Activity Date")),
+        }
 
 
 def _parse_strava_date(value: str | None) -> datetime | None:
@@ -141,28 +212,32 @@ def _parse_strava_date(value: str | None) -> datetime | None:
 # Parsing
 
 
-def _read_bytes(path: Path) -> bytes:
-    data = path.read_bytes()
-    if path.name.lower().endswith(".gz") or data[:2] == b"\x1f\x8b":
-        data = gzip.decompress(data)
-    return data
+def _gunzip(data: bytes) -> bytes:
+    return gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
 
 
 def load_activity(path: str | os.PathLike, strava_index: dict | None = None) -> Activity:
     """Parse one activity file. Raises ``ValueError`` if it cannot be read."""
     path = Path(path)
-    kind = Path(_strip_gz(path.name)).suffix.lower()
-    data = _read_bytes(path)
-    if kind == ".gpx":
-        act = parse_gpx(data, str(path))
-    elif kind == ".tcx":
-        act = parse_tcx(data, str(path))
-    elif kind == ".fit":
-        act = parse_fit(data, str(path))
-    else:
-        raise ValueError(f"Unsupported file type: {path.name}")
+    return parse_activity(path.name, path.read_bytes(), str(path), strava_index)
 
-    meta = (strava_index or {}).get(_strip_gz(path.name))
+
+def parse_activity(name: str, data: bytes, label: str | None = None,
+                   strava_index: dict | None = None) -> Activity:
+    """Parse the contents of an activity file called ``name`` (.gpx/.tcx/.fit[.gz])."""
+    label = label or name
+    kind = Path(_strip_gz(name)).suffix.lower()
+    data = _gunzip(data)
+    if kind == ".gpx":
+        act = parse_gpx(data, label)
+    elif kind == ".tcx":
+        act = parse_tcx(data, label)
+    elif kind == ".fit":
+        act = parse_fit(data, label)
+    else:
+        raise ValueError(f"Unsupported file type: {name}")
+
+    meta = (strava_index or {}).get(_strip_gz(name))
     if meta:
         act = replace(
             act,
@@ -297,11 +372,16 @@ def parse_fit(data: bytes, path: str = "<fit>") -> Activity:
                         continue
                     pts.append((lat * _SEMICIRCLE, lon * _SEMICIRCLE))
                 elif frame.name in ("sport", "session") and sport is None:
+                    # Keep looking past vague values such as "generic".
                     value = _fit_field(frame, "sport")
-                    if value is not None:
+                    if isinstance(value, int):
+                        sport = _FIT_SPORTS.get(value)
+                    elif value is not None:
                         sport = normalize_sport(str(value))
-    except fitdecode.FitError as exc:
-        raise ValueError(f"Invalid FIT file: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 - fitdecode raises several error types
+        if not pts:
+            raise ValueError(f"Invalid FIT file: {exc}") from exc
+        # A truncated file (e.g. the watch died) still has usable points.
 
     segments = [np.array(pts, dtype=np.float64)] if pts else []
     return Activity(path, segments, sport=sport, start_time=start)
@@ -368,26 +448,61 @@ def _trim(segments: list[np.ndarray], metres: float) -> list[np.ndarray]:
     return out
 
 
-def iter_activities(paths: list[Path], strava_index: dict | None = None,
-                    jobs: int = 1) -> Iterator[tuple[Path, Activity | Exception]]:
-    """Load many files, yielding ``(path, activity_or_error)``."""
-    if jobs == 1 or len(paths) < 32:
-        for p in paths:
+def iter_sources(sources: list[Source]) -> Iterator[tuple[Source, bytes | Exception]]:
+    """Read the raw bytes of each source, opening each zip archive only once."""
+    stack = contextlib.ExitStack()
+    open_key = None
+    archive = None
+    try:
+        for src in sources:
             try:
-                yield p, load_activity(p, strava_index)
+                if isinstance(src, ZipMember):
+                    key = (src.archive, src.inner)
+                    if key != open_key:
+                        stack.close()
+                        stack = contextlib.ExitStack()
+                        archive = stack.enter_context(zipfile.ZipFile(src.archive))
+                        if src.inner:
+                            fh = stack.enter_context(archive.open(src.inner))
+                            archive = stack.enter_context(zipfile.ZipFile(fh))
+                        open_key = key
+                    yield src, archive.read(src.member)
+                else:
+                    yield src, Path(src).read_bytes()
             except Exception as exc:  # noqa: BLE001 - reported to the user
-                yield p, exc
+                if isinstance(src, ZipMember):
+                    stack.close()
+                    open_key = None
+                yield src, exc
+    finally:
+        stack.close()
+
+
+def iter_activities(sources: list[Source], strava_index: dict | None = None,
+                    jobs: int = 1) -> Iterator[tuple[Source, Activity | Exception]]:
+    """Load many files, yielding ``(source, activity_or_error)``."""
+    blobs = iter_sources(sources)
+    if jobs == 1 or len(sources) < 32:
+        for src, data in blobs:
+            yield src, data if isinstance(data, Exception) else _parse_safe(src, data, strava_index)
         return
 
     from concurrent.futures import ProcessPoolExecutor
 
     with ProcessPoolExecutor(max_workers=jobs if jobs > 0 else None) as pool:
-        for p, result in zip(paths, pool.map(_load_safe, paths, [strava_index] * len(paths), chunksize=16)):
-            yield p, result
+        while True:
+            batch = list(itertools.islice(blobs, 256))
+            if not batch:
+                break
+            todo = [(s, d) for s, d in batch if not isinstance(d, Exception)]
+            parsed = iter(pool.map(_parse_safe, [s for s, _ in todo], [d for _, d in todo],
+                                   itertools.repeat(strava_index), chunksize=8))
+            for src, data in batch:
+                yield src, data if isinstance(data, Exception) else next(parsed)
 
 
-def _load_safe(path: Path, strava_index: dict | None):
+def _parse_safe(src: Source, data: bytes, strava_index: dict | None):
     try:
-        return load_activity(path, strava_index)
+        return parse_activity(src.name, data, str(src), strava_index)
     except Exception as exc:  # noqa: BLE001
         return exc
