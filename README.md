@@ -13,6 +13,14 @@ a print-ready poster.
 
 <sub>These previews use made-up runs from `examples/make_demo_data.py`.</sub>
 
+## Website version
+
+The [`website/`](website/) folder is the same thing as a web page: people drop
+in their export folder or zip, see the glowing map, and download a poster.
+It runs entirely in the browser (no server code, and files are never
+uploaded), so you can copy the folder into any web server's `htdocs`. See
+[website/README.md](website/README.md).
+
 ## Install
 
 ```sh

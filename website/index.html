@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run Heatmap</title>
+<meta name="description" content="Drop in your GPS files and see every run you've done glow on one map. Make a poster too.">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111'/%3E%3Cpath d='M6 24c5-3 7-13 12-14s5 8 8 6' stroke='%23ff7a2a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <header class="brand">
+      <h1>Run Heatmap</h1>
+      <p>Every run you've done on one map. The streets you run most glow brightest.</p>
+    </header>
+
+    <section class="card" id="load-card">
+      <h2><span class="step">1</span> Add your runs</h2>
+      <div class="drop" id="drop">
+        <p><strong>Drop your export folder or .zip here</strong></p>
+        <p class="hint">GPX, TCX and FIT files · Strava and Garmin exports work as they are</p>
+        <div class="buttons">
+          <label class="btn primary">Choose folder<input type="file" id="pick-folder" webkitdirectory directory multiple hidden></label>
+          <label class="btn">Choose files or .zip<input type="file" id="pick-files" multiple accept=".gpx,.tcx,.fit,.gz,.zip,.csv" hidden></label>
+        </div>
+      </div>
+      <div class="status" id="status" hidden>
+        <div class="bar"><div id="bar"></div></div>
+        <p id="status-text"></p>
+      </div>
+      <p class="privacy">🔒 Your files stay on your computer. They are read by your browser and never uploaded.</p>
+    </section>
+
+    <section class="card" id="filter-card" hidden>
+      <h2><span class="step">2</span> Choose what to show</h2>
+      <p class="stats" id="stats"></p>
+      <div class="grid">
+        <label>Activities
+          <select id="sport">
+            <option value="run">Runs</option>
+            <option value="ride">Rides</option>
+            <option value="walk">Walks &amp; hikes</option>
+            <option value="all">Everything</option>
+          </select>
+        </label>
+        <label>Hide start &amp; finish
+          <select id="trim">
+            <option value="0">No</option>
+            <option value="150">First/last 150 m</option>
+            <option value="300">First/last 300 m</option>
+            <option value="500">First/last 500 m</option>
+          </select>
+        </label>
+        <label>From <input type="date" id="since"></label>
+        <label>To <input type="date" id="until"></label>
+      </div>
+      <p class="note" id="unknown-note" hidden></p>
+      <div class="buttons">
+        <button class="btn small" id="zoom-home">Zoom to home area</button>
+        <button class="btn small" id="zoom-all">Show everything</button>
+      </div>
+    </section>
+
+    <section class="card" id="map-card" hidden>
+      <h2><span class="step">3</span> Map style</h2>
+      <div class="grid">
+        <label>Street map
+          <select id="tiles"></select>
+        </label>
+        <label>Line colour
+          <select id="line-color">
+            <option value="#ff6a1f">Orange</option>
+            <option value="#2f9bff">Blue</option>
+            <option value="#ff3fb4">Pink</option>
+            <option value="#b6ff3b">Lime</option>
+            <option value="#ffffff">White</option>
+          </select>
+        </label>
+        <label class="wide" id="key-row" hidden>Map API key
+          <input type="text" id="map-key" placeholder="Paste your key" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="wide">Glow
+          <input type="range" id="opacity" min="0.03" max="0.6" step="0.01" value="0.2">
+        </label>
+      </div>
+      <p class="note" id="tiles-note" hidden></p>
+    </section>
+
+    <section class="card" id="poster-card" hidden>
+      <h2><span class="step">4</span> Make a poster</h2>
+      <p class="hint">Move and zoom the map: the dashed frame is what goes on the poster.</p>
+      <div class="grid">
+        <label class="wide">Title <input type="text" id="title" value="Every Run" maxlength="40"></label>
+        <label class="wide">Subtitle <input type="text" id="subtitle" placeholder=""></label>
+        <label>Paper
+          <select id="paper">
+            <option value="a4">A4</option>
+            <option value="a3">A3</option>
+            <option value="a2" selected>A2</option>
+            <option value="a1">A1</option>
+            <option value="letter">US Letter</option>
+            <option value="18x24">18 × 24 in</option>
+            <option value="24x36">24 × 36 in</option>
+            <option value="square">Square 50 cm</option>
+          </select>
+        </label>
+        <label>Orientation
+          <select id="orientation">
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
+          </select>
+        </label>
+        <label>Colours
+          <select id="palette"></select>
+        </label>
+        <label>Quality
+          <select id="dpi">
+            <option value="100">Preview (fast)</option>
+            <option value="200" selected>Print, 200 dpi</option>
+            <option value="300">Best, 300 dpi</option>
+          </select>
+        </label>
+        <label class="check wide"><input type="checkbox" id="poster-map" checked> Street map behind the runs</label>
+        <label class="wide">Street map brightness
+          <input type="range" id="map-brightness" min="0.4" max="2" step="0.05" value="1">
+        </label>
+      </div>
+      <button class="btn primary block" id="make-poster">Make poster</button>
+      <div class="status" id="poster-status" hidden>
+        <div class="bar"><div id="poster-bar"></div></div>
+        <p id="poster-status-text"></p>
+      </div>
+      <div class="result" id="poster-result" hidden>
+        <img id="poster-img" alt="Your poster">
+        <a class="btn primary block" id="poster-download" download="run-heatmap-poster.png">Download poster (PNG)</a>
+        <p class="note" id="poster-note"></p>
+      </div>
+    </section>
+
+    <footer class="foot">Map data © OpenStreetMap contributors. Street maps by CARTO, Stadia Maps or MapTiler.</footer>
+  </aside>
+
+  <main class="stage">
+    <div id="map"></div>
+    <div class="empty" id="empty">
+      <div>
+        <p class="big">Your runs will appear here</p>
+        <p>Drop a folder or .zip anywhere on this page</p>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="dropveil" id="dropveil"><p>Drop to add your runs</p></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script type="module" src="js/app.js"></script>
+<noscript><p style="padding:2rem;color:#fff">This page needs JavaScript.</p></noscript>
+</body>
+</html>
