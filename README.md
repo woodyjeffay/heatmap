@@ -47,13 +47,15 @@ the most-run streets glow white. Open it in any browser.
 
 ### The map behind the interactive page
 
-The page draws your routes over a dark street map from CARTO, which needs no
-key. If the map area shows a message instead of streets (for example "API key
-required"), pick another map with `--html-map`:
+The page draws your routes over a dark street map from CARTO. Since
+23 September 2026 CARTO's maps need a free key (get one at
+[carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/)); without it
+the map area only says "API KEY REQUIRED". Pass the key with `--map-key`
+(below), or pick another map with `--html-map`:
 
 | `--html-map` | Key? |
 |---|---|
-| `carto-dark` *(default)* | No key. |
+| `carto-dark` *(default)* | Free CARTO key. |
 | `stadia-dark` | No key when the page is opened from `http://localhost` (see below); a free key from [stadiamaps.com](https://stadiamaps.com) otherwise. |
 | `maptiler-dark` | Always needs a free key from [maptiler.com](https://www.maptiler.com/cloud/). |
 | `none` | No background map: just your glowing routes on black. |

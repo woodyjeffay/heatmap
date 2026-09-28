@@ -23,6 +23,7 @@ folder and open http://localhost:8000.
 ```
 website/
 ├── index.html        the page
+├── config.js         your map API keys and the default map
 ├── css/app.css
 ├── js/
 │   ├── app.js        page wiring
@@ -49,18 +50,33 @@ website/
 
 ## Street maps and API keys
 
-The page uses CARTO's free street maps by default, which need no key. The
-alternatives in the "Street map" menu:
+Since 23 September 2026, CARTO's street maps need a free API key; without
+one, every map tile just says "API KEY REQUIRED". Get a key at
+[carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/).
+
+**Put your key in `config.js`** (next to `index.html`) and every visitor
+gets the map without needing a key of their own:
+
+```js
+mapKeys: {
+  carto: "paste-your-carto-key-here",
+  stadia: "",
+  maptiler: "",
+},
+```
+
+Save the file and reload the page. Visitors can still paste their own key
+in step 3; theirs is saved in their own browser only and takes priority.
+Like any map key, it's visible to anyone who looks at the page's files. If
+your CARTO account lets you restrict a key to your website's address, do
+that.
 
 | Map | Key |
 |---|---|
-| CARTO dark / light | None. |
+| CARTO dark / light *(default)* | Free key from [carto.com](https://carto.com/basemaps/apikey/). |
 | Stadia dark | None on `localhost`. On a public site, add your domain (or get a key) at [stadiamaps.com](https://stadiamaps.com). |
-| MapTiler dark | Always needs a free key from [maptiler.com](https://www.maptiler.com/cloud/). |
-
-Visitors paste a key into the page; it's remembered in their own browser
-only. If you run a busy public site, check each map provider's terms and
-limits for free use.
+| MapTiler dark | Free key from [maptiler.com](https://cloud.maptiler.com/account/keys/). |
+| None | No street map: just the glowing runs on black. |
 
 ## Browser notes
 

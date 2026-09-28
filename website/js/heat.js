@@ -207,11 +207,19 @@ function blur(src, W, H, sigma) {
 const TILE = 256;
 
 export const TILE_PROVIDERS = {
-  "carto-dark": { label: "CARTO dark", url: "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png", attribution: "© OpenStreetMap contributors © CARTO" },
-  "carto-light": { label: "CARTO light", url: "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", attribution: "© OpenStreetMap contributors © CARTO" },
-  "stadia-dark": { label: "Stadia dark", url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png?api_key={key}", attribution: "© Stadia Maps © OpenMapTiles © OpenStreetMap contributors", optionalKey: true },
-  "maptiler-dark": { label: "MapTiler dark (key)", url: "https://api.maptiler.com/maps/dataviz-dark/256/{z}/{x}/{y}.png?key={key}", attribution: "© MapTiler © OpenStreetMap contributors", needsKey: true },
+  // CARTO raster maps need a free key since 23 September 2026 (carto.com/basemaps/apikey);
+  // without one every tile says "API KEY REQUIRED".
+  "carto-dark": { label: "CARTO dark", service: "carto", needsKey: true, url: "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png?key={key}", attribution: "© OpenStreetMap contributors © CARTO" },
+  "carto-light": { label: "CARTO light", service: "carto", needsKey: true, url: "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png?key={key}", attribution: "© OpenStreetMap contributors © CARTO" },
+  "stadia-dark": { label: "Stadia dark", service: "stadia", url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png?api_key={key}", attribution: "© Stadia Maps © OpenMapTiles © OpenStreetMap contributors" },
+  "maptiler-dark": { label: "MapTiler dark", service: "maptiler", needsKey: true, url: "https://api.maptiler.com/maps/dataviz-dark/256/{z}/{x}/{y}.png?key={key}", attribution: "© MapTiler © OpenStreetMap contributors" },
   none: { label: "None", url: null },
+};
+
+export const KEY_SERVICES = {
+  carto: { name: "CARTO", signup: "https://carto.com/basemaps/apikey/" },
+  stadia: { name: "Stadia Maps", signup: "https://client.stadiamaps.com/signup/" },
+  maptiler: { name: "MapTiler", signup: "https://cloud.maptiler.com/account/keys/" },
 };
 
 export function tileUrl(provider, key) {
@@ -219,7 +227,7 @@ export function tileUrl(provider, key) {
   if (!p || !p.url) return null;
   if (!p.url.includes("{key}")) return p.url;
   if (key) return p.url.replace("{key}", encodeURIComponent(key));
-  if (p.needsKey) throw new Error("This map needs an API key");
+  if (p.needsKey) throw new Error(`${KEY_SERVICES[p.service].name} maps need an API key`);
   return p.url.replace(/[?&][^?&=]+=\{key\}/, "");
 }
 

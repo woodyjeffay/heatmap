@@ -115,3 +115,4 @@ body.dragging .dropveil { display: grid; }
   .panel { border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
   .stage { height: 70vh; }
 }
+.note a { color: var(--accent-2); }

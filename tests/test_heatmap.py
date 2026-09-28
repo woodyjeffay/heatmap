@@ -248,11 +248,11 @@ def test_basemap_stitches_and_caches_tiles(tmp_path):
         return buf.getvalue()
 
     bbox = BBox.from_latlon(51.49, -0.11, 51.51, -0.09)
-    img = fetch_basemap(bbox, 300, 300, "carto-dark", cache_dir=tmp_path, fetch=fake_fetch)
+    img = fetch_basemap(bbox, 300, 300, "carto-dark", cache_dir=tmp_path, fetch=fake_fetch, key="K")
     assert img.size == (300, 300) and img.getpixel((150, 150)) == (40, 80, 120)
     n = len(calls)
-    assert n > 0
-    fetch_basemap(bbox, 300, 300, "carto-dark", cache_dir=tmp_path, fetch=fake_fetch)
+    assert n > 0 and calls[0].endswith(".png?key=K")
+    fetch_basemap(bbox, 300, 300, "carto-dark", cache_dir=tmp_path, fetch=fake_fetch, key="K")
     assert len(calls) == n  # second time everything comes from the cache
     assert 12 <= choose_zoom(bbox, 300) <= 15
 
@@ -308,6 +308,9 @@ def test_map_keys():
     assert url.endswith("{y}.png") and "{key}" not in url
     with pytest.raises(ValueError, match="needs an API key"):
         resolve_provider("maptiler-dark")
+    with pytest.raises(ValueError, match="needs an API key"):
+        resolve_provider("carto-dark")
+    assert resolve_provider("carto-light", "K")[0].endswith("light_nolabels/{z}/{x}/{y}.png?key=K")
     url, _ = resolve_provider("https://t.example.com/{z}/{x}/{y}.png?token={key}", "K")
     assert url.endswith("?token=K")
 
@@ -320,8 +323,10 @@ def test_cli_html_map_choice(tmp_path):
     assert "const TILES = null;" in html.read_text()
     assert cli.main(args + ["--html-map", "maptiler-dark", "--map-key", "SECRET"]) == 0
     assert "dataviz-dark/256/{z}/{x}/{y}.png?key=SECRET" in html.read_text()
-    assert cli.main(args) == 0
-    assert "basemaps.cartocdn.com" in html.read_text()
+    assert cli.main(args) == 0  # CARTO without a key: page still written, no map
+    assert "const TILES = null;" in html.read_text()
+    assert cli.main(args + ["--map-key", "CK"]) == 0
+    assert "basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png?key=CK" in html.read_text()
 
 
 # --- FIT files and zip archives ----------------------------------------------
@@ -409,7 +414,7 @@ def test_runs_stay_brighter_than_streets_on_a_map():
 
 def test_poster_uses_a_street_map_by_default(tmp_path, offline_basemap):
     d = _write_runs(tmp_path)
-    args = [str(d), "-o", str(tmp_path / "p.png"), "--poster", "a4", "--dpi", "40"]
+    args = [str(d), "-o", str(tmp_path / "p.png"), "--poster", "a4", "--dpi", "40", "--map-key", "K"]
     assert cli.main(args) == 0
     assert cli.main(args + ["--palette", "ink"]) == 0
     assert cli.main(args + ["--basemap", "none"]) == 0

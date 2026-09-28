@@ -27,11 +27,11 @@ TILE = 256
 
 PROVIDERS = {
     "carto-dark": (
-        "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png",
+        "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png?key={key}",
         "© OpenStreetMap contributors © CARTO",
     ),
     "carto-light": (
-        "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png?key={key}",
         "© OpenStreetMap contributors © CARTO",
     ),
     "osm": (
@@ -49,8 +49,10 @@ PROVIDERS = {
     ),
 }
 
-# Providers that refuse every request without an API key.
-KEY_REQUIRED = {"maptiler-dark"}
+# Providers that refuse every request without an API key. CARTO's raster maps
+# need a free key since 23 September 2026 (https://carto.com/basemaps/apikey/);
+# without one every tile is stamped "API KEY REQUIRED".
+KEY_REQUIRED = {"carto-dark", "carto-light", "maptiler-dark"}
 
 USER_AGENT = "run-heatmap/0.1 (+https://github.com/woodyjeffay/heatmap)"
 

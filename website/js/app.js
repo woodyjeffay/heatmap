@@ -2,7 +2,7 @@
 
 import { BBox, bboxOfActivities, densestCluster } from "./geo.js";
 import { cleanActivity, collectSources, parseActivity } from "./parse.js";
-import { PALETTES, TILE_PROVIDERS, paperPixels, posterLayout, renderPoster, tileUrl } from "./heat.js";
+import { KEY_SERVICES, PALETTES, TILE_PROVIDERS, paperPixels, posterLayout, renderPoster, tileUrl } from "./heat.js";
 import { RunMap } from "./map.js";
 
 const $ = (id) => document.getElementById(id);
@@ -21,8 +21,9 @@ let busy = false;
 
 for (const [id, p] of Object.entries(TILE_PROVIDERS)) $("tiles").add(new Option(p.label, id));
 for (const [id, p] of Object.entries(PALETTES)) $("palette").add(new Option(p.label, id));
-$("tiles").value = store.get("tiles", "carto-dark");
-$("map-key").value = store.get("key", "");
+const CONFIG = window.RUN_HEATMAP_CONFIG || {};
+const siteKeys = CONFIG.mapKeys || {};
+$("tiles").value = store.get("tiles", TILE_PROVIDERS[CONFIG.defaultMap] ? CONFIG.defaultMap : "carto-dark");
 $("line-color").value = store.get("color", "#ff6a1f");
 $("palette").value = store.get("palette", "fire");
 applyTiles();
@@ -165,21 +166,42 @@ $("zoom-all").addEventListener("click", () => shown.length && runMap.fit(bboxOfA
 
 // ---------------------------------------------------------------- map style
 
+/** The visitor's own key for a map service, else the one in config.js. */
+function keyFor(provider) {
+  const service = TILE_PROVIDERS[provider].service;
+  if (!service) return "";
+  return store.get("key:" + service, "") || (siteKeys[service] || "").trim();
+}
+
 function applyTiles() {
   const provider = $("tiles").value;
   const p = TILE_PROVIDERS[provider];
-  $("key-row").hidden = !(p.needsKey || p.optionalKey);
-  const err = runMap.setTiles(provider, $("map-key").value.trim());
+  const service = p.service && KEY_SERVICES[p.service];
+  $("key-row").hidden = !service;
+  if (service) {
+    $("key-label").textContent = `${service.name} API key`;
+    $("map-key").value = store.get("key:" + p.service, "");
+    $("map-key").placeholder = siteKeys[p.service] ? "Using this website's key" : "Paste your key";
+  }
+  const err = runMap.setTiles(provider, keyFor(provider));
   const note = $("tiles-note");
-  note.hidden = !err && !p.optionalKey;
-  note.textContent = err
-    ? `${err}: get a free one at maptiler.com, or pick another map.`
-    : "Works without a key while testing on localhost; on a public website add a free key from stadiamaps.com.";
+  note.hidden = !err && provider !== "stadia-dark";
+  note.innerHTML = "";
+  if (err) {
+    note.append(`${err}. `);
+    const a = Object.assign(document.createElement("a"), { href: service.signup, target: "_blank", rel: "noopener", textContent: "Get a free key" });
+    note.append(a, ", paste it above, or pick another map.");
+  } else if (provider === "stadia-dark") {
+    note.textContent = "Works without a key on localhost; on a public website add your domain or a key at stadiamaps.com.";
+  }
   store.set("tiles", provider);
-  store.set("key", $("map-key").value.trim());
 }
+$("map-key").addEventListener("change", () => {
+  const service = TILE_PROVIDERS[$("tiles").value].service;
+  if (service) store.set("key:" + service, $("map-key").value.trim());
+  applyTiles();
+});
 $("tiles").addEventListener("change", applyTiles);
-$("map-key").addEventListener("change", applyTiles);
 $("opacity").addEventListener("input", (e) => runMap.setStyle({ opacity: +e.target.value }));
 $("line-color").addEventListener("change", (e) => { runMap.setStyle({ color: e.target.value }); store.set("color", e.target.value); });
 runMap.setStyle({ color: $("line-color").value });
@@ -211,7 +233,7 @@ $("make-poster").addEventListener("click", async () => {
   $("make-poster").disabled = true;
   $("poster-result").hidden = true;
   try {
-    let map = null;
+    let map = null, mapProblem = null;
     if ($("poster-map").checked) {
       const pal = PALETTES[$("palette").value];
       let provider = $("tiles").value;
@@ -219,9 +241,9 @@ $("make-poster").addEventListener("click", async () => {
       // light paper palettes look right on a light street map
       if (pal.light && provider === "carto-dark") provider = "carto-light";
       try {
-        map = { template: tileUrl(provider, $("map-key").value.trim()), attribution: TILE_PROVIDERS[provider].attribution, brightness: +$("map-brightness").value };
+        map = { template: tileUrl(provider, keyFor(provider)), attribution: TILE_PROVIDERS[provider].attribution, brightness: +$("map-brightness").value };
       } catch (err) {
-        map = null;
+        mapProblem = `Street map left out: ${err.message} (see step 3).`;
       }
     }
     const t0 = performance.now();
@@ -249,6 +271,7 @@ $("make-poster").addEventListener("click", async () => {
     $("poster-note").textContent = [
       `${canvas.width.toLocaleString()} × ${canvas.height.toLocaleString()} px, ${(blob.size / 1e6).toFixed(1)} MB, made in ${((performance.now() - t0) / 1000).toFixed(1)} s.`,
       ...warnings,
+      ...(mapProblem ? [mapProblem] : []),
     ].join(" ");
     $("poster-result").hidden = false;
     $("poster-status").hidden = true;
