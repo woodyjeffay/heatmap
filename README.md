@@ -4,35 +4,7 @@ A web page that shows every run you've ever done on one glowing map.
 
 Drop in the export you downloaded from Strava, Garmin or another service, and
 every route is drawn on top of the others. Streets you ran once show as a
-faint trace, and the ones you run every week glow brightest, like a long
-exposure photo of your running life. Frame the part you like and download it
-as a print-ready poster.
-
-## The idea
-
-- **Your files never leave your computer.** The whole app runs in the
-  visitor's browser. The server only sends the page, and nothing is uploaded.
-  That means there's no account and no privacy policy to worry about.
-- **No server code.** This repository *is* the website: plain HTML, CSS and
-  JavaScript. There's no PHP, no database, no build step and nothing to
-  install. Any web server that can serve files will do.
-- **Nothing loaded from elsewhere.** The map library (Leaflet) and the unzip
-  library (fflate) are in `vendor/`. The only outside requests are for the
-  street map tiles (see [API keys](#street-map-api-keys) below).
-
-## What visitors can do
-
-1. **Add runs.** Drop a folder or `.zip` onto the page, or use the buttons.
-   GPX, TCX and FIT files work, gzipped or not. Strava and Garmin export zips
-   work as downloaded, including Garmin's zips inside zips. Strava's
-   `activities.csv` is used to tell runs from rides.
-2. **Filter.** Choose runs, rides, walks or everything, and a date range.
-   "Hide start & finish" removes the first and last stretch of every route,
-   so a shared poster doesn't show where you live.
-3. **Style the map.** Pick the street map, line colour and glow.
-4. **Make a poster.** Move the map to frame it (the dashed rectangle shows
-   the poster), choose the paper size, colours and quality, and download a
-   PNG. Sizes run from A4 to A1 and 24 × 36 in, at up to 300 dpi.
+faint trace, and the ones you run every week glow brightest.
 
 ### Where people get their GPS files
 
