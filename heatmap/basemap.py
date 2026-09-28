@@ -112,7 +112,7 @@ def _tile_count(bbox: BBox, z: int) -> int:
 
 
 def fetch_basemap(bbox: BBox, width: int, height: int, provider: str = "carto-dark",
-                  *, dim: float = 1.0, cache_dir: str | os.PathLike | None = None,
+                  *, brightness: float = 1.0, cache_dir: str | os.PathLike | None = None,
                   fetch: Fetcher | None = None, zoom: int | None = None,
                   key: str | None = None) -> Image.Image:
     """Stitch tiles covering ``bbox`` into a ``width`` x ``height`` image."""
@@ -148,9 +148,29 @@ def fetch_basemap(bbox: BBox, width: int, height: int, provider: str = "carto-da
     bottom = (bbox.y1 * n - ty0) * TILE
     img = mosaic.transform((width, height), Image.Transform.EXTENT,
                            (left, top, right, bottom), Image.Resampling.BICUBIC)
-    if dim != 1.0:
-        img = ImageEnhance.Brightness(img).enhance(dim)
+    img = reveal(img)
+    if brightness != 1.0:
+        img = ImageEnhance.Brightness(img).enhance(brightness)
     return img
+
+
+def reveal(img: Image.Image, target: float = 0.42) -> Image.Image:
+    """Make the streets of a very dark map visible without greying its background.
+
+    Dark tile styles draw streets only a few shades above the background, which
+    all but disappears under a glowing heatmap. This stretches the levels so
+    the brightest map features reach ``target`` luminance while the typical
+    (background) colour stays where it is. Light maps are returned unchanged.
+    """
+    a = np.asarray(img.convert("RGB"), dtype=np.float32) / 255
+    lum = a @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+    mid = float(np.median(lum))
+    top = float(np.percentile(lum, 99.5))
+    if mid > 0.5 or top >= target or top - mid < 1e-3:
+        return img
+    gain = min((target - mid) / (top - mid), 8.0)
+    a = np.clip(mid + (a - mid) * gain, 0, 1)
+    return Image.fromarray((a * 255 + 0.5).astype(np.uint8), "RGB")
 
 
 def is_light(img: Image.Image) -> bool:

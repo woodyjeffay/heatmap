@@ -381,3 +381,36 @@ def test_cli_single_straight_route_has_sane_size(tmp_path):
     out = tmp_path / "o.png"
     assert cli.main([str(DATA / "garmin_run.fit"), "-o", str(out), "--width", "300"]) == 0
     assert Image.open(out).size == (300, 600)
+
+
+# --- street map under the runs -----------------------------------------------
+
+def test_reveal_brightens_dark_streets_but_not_background():
+    from heatmap.basemap import reveal
+
+    img = Image.new("RGB", (100, 100), (14, 14, 14))
+    for x in range(0, 100, 10):  # faint streets, as in dark tile styles
+        img.paste((38, 38, 38), (x, 0, x + 1, 100))
+    out = np.asarray(reveal(img))
+    assert out[50, 55, 0] == 14            # background unchanged
+    assert out[50, 0, 0] >= 70             # streets now clearly visible
+    light = Image.new("RGB", (10, 10), (240, 240, 240))
+    assert reveal(light) is light          # light maps left alone
+
+
+def test_runs_stay_brighter_than_streets_on_a_map():
+    vp = _viewport()
+    base = Image.new("RGB", (vp.width, vp.height), (77, 77, 77))  # a lit-up street everywhere
+    once = [Activity("q", [line(51.50, -0.108, 51.50, -0.092)])]
+    img = np.asarray(render(once, vp, glow=0, base=base).convert("L"), dtype=float)
+    x, y = vp.project(np.array([[51.50, -0.10]]))[0].astype(int)
+    assert img[y - 1:y + 2, x].max() > 77 + 20
+
+
+def test_poster_uses_a_street_map_by_default(tmp_path, offline_basemap):
+    d = _write_runs(tmp_path)
+    args = [str(d), "-o", str(tmp_path / "p.png"), "--poster", "a4", "--dpi", "40"]
+    assert cli.main(args) == 0
+    assert cli.main(args + ["--palette", "ink"]) == 0
+    assert cli.main(args + ["--basemap", "none"]) == 0
+    assert offline_basemap == ["carto-dark", "carto-light"]

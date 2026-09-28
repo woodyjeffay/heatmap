@@ -99,7 +99,8 @@ cycling, or `--strict-sport` to drop files with no sport recorded.
 | `--scale` | How run counts become brightness: `log` (default, balanced), `linear` (only the busiest routes stand out), `equalize` (uses the whole colour ramp). |
 | `--glow` | Halo strength. `0` gives crisp lines; `1.5` gives more neon. |
 | `--line-width` | Line width in pixels. By default it scales with the image size. |
-| `--basemap` | Draws streets underneath the PNG: `carto-dark`, `carto-light`, `osm`, `stadia-dark`, `maptiler-dark` (use `--map-key`), or any `{z}/{x}/{y}` tile URL. Tiles are cached in `~/.cache/run-heatmap` and an attribution line is added. Off by default, because the glowing routes usually outline the city on their own. |
+| `--basemap` | The street map under your runs. `auto` *(default)* uses CARTO's dark map, or its light one for the `ink` / `risograph` palettes. Dark maps are brightened automatically so their streets show. Other choices: `none` (runs only), `carto-dark`, `carto-light`, `osm`, `stadia-dark`, `maptiler-dark` (use `--map-key`), or any `{z}/{x}/{y}` tile URL. Tiles are downloaded once and cached in `~/.cache/run-heatmap`, and an attribution line is added. |
+| `--basemap-brightness` | Brighten (`1.5`) or darken (`0.7`) the street map. |
 | `--trim-ends M` | **Privacy.** Hides the first and last M metres of every activity, so your front door isn't marked on a poster you share. |
 | `--since / --until` | Only activities between two dates (`YYYY-MM-DD`), e.g. one poster per year. |
 | `--title / --subtitle` | Poster text. The subtitle defaults to e.g. `421 RUNS · 3,310 KM · 2019 – 2022`; pass `--subtitle ""` to hide it. |

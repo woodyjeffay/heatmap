@@ -201,7 +201,11 @@ def colorize(intensity: np.ndarray, palette: str = "fire", background: str = "#0
     """
     lut = palette_lut(palette).astype(np.float32)
     H, W = intensity.shape
-    light_bg = sum(hex_to_rgb(background)) > 3 * 160
+    if base is not None:
+        base = base.convert("RGB").resize((W, H))
+        light_bg = float(np.asarray(base.convert("L").reduce(8)).mean()) > 128
+    else:
+        light_bg = sum(hex_to_rgb(background)) > 3 * 160
 
     core = intensity
     if glow > 0:
@@ -215,13 +219,20 @@ def colorize(intensity: np.ndarray, palette: str = "fire", background: str = "#0
         alpha = np.clip(core * 1.5 + 0.35 * (core > 0), 0, 1)
         level = core
 
+    if base is not None and not light_bg:
+        # Over a visible street map, even a street run once must be brighter
+        # than the map's own streets, so start every run partway up the ramp.
+        run = core > 0
+        level = np.where(run, 0.3 + 0.7 * level, level)
+        alpha = np.where(run, np.maximum(alpha, 0.8), alpha)
+
     idx = np.clip((level * (len(lut) - 1)).astype(np.int32), 0, len(lut) - 1)
     color = lut[idx]
 
     if base is None:
         bg = np.array(hex_to_rgb(background), dtype=np.float32) / 255
     else:
-        bg = np.asarray(base.convert("RGB").resize((W, H)), dtype=np.float32) / 255
+        bg = np.asarray(base, dtype=np.float32) / 255
 
     a = alpha.astype(np.float32)[..., None]
     if not light_bg:

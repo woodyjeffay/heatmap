@@ -15,7 +15,7 @@ from .basemap import PROVIDERS, fetch_basemap, is_light, resolve_provider
 from .geo import BBox, bbox_of, densest_cluster, from_world, to_world
 from .parsers import clean_activity, find_activity_files, iter_activities, load_strava_index
 from .poster import PAPER_SIZES_MM, compose, layout, paper_pixels
-from .render import DEFAULT_BACKGROUNDS, PALETTES, Viewport, render
+from .render import DEFAULT_BACKGROUNDS, PALETTES, Viewport, hex_to_rgb, render
 from .web import build_html
 
 
@@ -76,10 +76,13 @@ def build_parser() -> argparse.ArgumentParser:
     look.add_argument("--glow", type=float, default=1.0, help="halo strength, 0 for crisp lines (default: %(default)s)")
     look.add_argument("--scale", default="log", choices=["log", "linear", "equalize"],
                       help="how run counts map to brightness (default: %(default)s)")
-    look.add_argument("--basemap", default="none",
-                      help=f"draw streets underneath: none, {', '.join(PROVIDERS)}, or a tile URL "
-                           "template like https://.../{z}/{x}/{y}.png (downloads tiles; default: none)")
-    look.add_argument("--basemap-dim", type=float, default=0.55, help="basemap brightness (default: %(default)s)")
+    look.add_argument("--basemap", default="auto",
+                      help=f"street map underneath: auto (carto-dark, or carto-light for light palettes), "
+                           f"none, {', '.join(PROVIDERS)}, or a tile URL template like "
+                           "https://.../{z}/{x}/{y}.png (downloads tiles; default: %(default)s)")
+    look.add_argument("--basemap-brightness", "--basemap-dim", dest="basemap_brightness", type=float,
+                      default=1.0, metavar="X",
+                      help="make the street map brighter (>1) or darker (<1) (default: %(default)s)")
     look.add_argument("--title", help="poster title (default: none for images, 'Every Run' for posters)")
     look.add_argument("--subtitle", help="poster subtitle (default: stats line; '' to hide)")
     look.add_argument("--font", help="path to a .ttf/.otf font for the poster caption")
@@ -193,10 +196,16 @@ def main(argv: list[str] | None = None) -> int:
     _log(f"Rendering {width:,} x {height:,} px ...")
 
     base = attribution = None
-    if args.basemap != "none":
+    provider = args.basemap
+    if provider == "auto":
+        light_palette = palette in DEFAULT_BACKGROUNDS or (
+            args.background is not None and sum(hex_to_rgb(args.background)) > 3 * 160)
+        provider = "carto-light" if light_palette else "carto-dark"
+    if provider != "none":
+        _log(f"Fetching {provider} street map (cached after the first time; --basemap none to skip) ...")
         try:
-            _, attribution = resolve_provider(args.basemap, args.map_key)
-            base = fetch_basemap(bbox, width, height, args.basemap, dim=args.basemap_dim,
+            _, attribution = resolve_provider(provider, args.map_key)
+            base = fetch_basemap(bbox, width, height, provider, brightness=args.basemap_brightness,
                                  key=args.map_key)
         except Exception as exc:  # noqa: BLE001 - a missing basemap shouldn't sink the render
             _log(f"  basemap unavailable ({exc}); drawing without it")
@@ -208,6 +217,10 @@ def main(argv: list[str] | None = None) -> int:
                  line_width=args.line_width, glow=args.glow, scale=args.scale, base=base)
 
     if args.poster:
+        if base is not None and args.background is None:
+            # Frame the map in its own background colour so it reads as one page.
+            r, g, b = np.median(np.asarray(base.reduce(8)).reshape(-1, 3), axis=0).astype(int)
+            background = f"#{r:02x}{g:02x}{b:02x}"
         img = compose(img, lay, background=background, title=title, subtitle=subtitle,
                       attribution=attribution, font=args.font)
         dpi = (args.dpi, args.dpi)
