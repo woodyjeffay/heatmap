@@ -1,152 +1,107 @@
-# run-heatmap
+# Run Heatmap
 
-A heatmap of every run you've done. Point it at your exported GPS files and it
-draws every route onto one map. Streets you've run once show as a faint trace,
-and the ones you run every week glow brightest. It can also lay the map out as
-a print-ready poster.
+A web page that shows every run you've ever done on one glowing map.
 
-<p align="center">
-  <img src="docs/poster-fire.png" width="32%" alt="Fire palette poster">
-  <img src="docs/poster-ice.png" width="32%" alt="Ice palette poster">
-  <img src="docs/poster-ink.png" width="32%" alt="Ink palette poster on cream paper">
-</p>
+Drop in the export you downloaded from Strava, Garmin or another service, and
+every route is drawn on top of the others. Streets you ran once show as a
+faint trace, and the ones you run every week glow brightest.
 
-<sub>These previews use made-up runs from `examples/make_demo_data.py`.</sub>
-
-## Website version
-
-The [`website/`](website/) folder is the same thing as a web page: people drop
-in their export folder or zip, see the glowing map, and download a poster.
-It runs entirely in the browser (no server code, and files are never
-uploaded), so you can copy the folder into any web server's `htdocs`. See
-[website/README.md](website/README.md).
-
-## Install
-
-```sh
-pip install .            # Python 3.9+; installs numpy, Pillow and fitdecode
-```
-
-## Quick start
-
-```sh
-# Try it with fake data first
-python examples/make_demo_data.py demo-runs
-run-heatmap demo-runs -o heatmap.png
-
-# Your own runs
-run-heatmap ~/Downloads/strava_export -o heatmap.png --html heatmap.html
-
-# A 300 dpi A2 poster
-run-heatmap ~/Downloads/strava_export -o poster.png --poster a2 --title "London"
-```
-
-`--html` writes a single-page interactive map. You can zoom from the whole
-world down to one street. Overlapping routes add their light together, so
-the most-run streets glow white. Open it in any browser.
-
-### The map behind the interactive page
-
-The page draws your routes over a dark street map from CARTO. Since
-23 September 2026 CARTO's maps need a free key (get one at
-[carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/)); without it
-the map area only says "API KEY REQUIRED". Pass the key with `--map-key`
-(below), or pick another map with `--html-map`:
-
-| `--html-map` | Key? |
-|---|---|
-| `carto-dark` *(default)* | Free CARTO key. |
-| `stadia-dark` | No key when the page is opened from `http://localhost` (see below); a free key from [stadiamaps.com](https://stadiamaps.com) otherwise. |
-| `maptiler-dark` | Always needs a free key from [maptiler.com](https://www.maptiler.com/cloud/). |
-| `none` | No background map: just your glowing routes on black. |
-| a URL template | Any tile server, e.g. `https://tiles.example.com/{z}/{x}/{y}.png?token={key}`. |
-
-Put the key on the command line with `--map-key`, or set it once in your
-shell:
-
-```sh
-run-heatmap runs/ -o heatmap.png --html heatmap.html --html-map maptiler-dark --map-key YOUR_KEY
-
-export RUN_HEATMAP_MAP_KEY=YOUR_KEY   # add to ~/.zshrc to keep it
-```
-
-The key is written into the HTML file, so don't share that file publicly.
-Some tile services also refuse pages opened straight from disk (`file://`).
-Serving the folder locally fixes that:
-
-```sh
-python -m http.server 8000     # then open http://localhost:8000/heatmap.html
-```
-
-## Getting your GPS files
-
-run-heatmap reads **GPX**, **TCX** and **FIT** files, mixed together in any
-combination, including gzipped ones (`.gpx.gz`, `.fit.gz`, …). Pass files,
-folders (searched recursively) or **.zip archives** straight from the export.
-Zips inside zips are read too, so there's no need to unzip anything.
+### Where people get their GPS files
 
 | Service | How to export |
 |---|---|
-| **Strava** | Settings → My Account → *Download or Delete Your Account* → *Request your archive*. Pass the downloaded `.zip` or the unzipped folder. Its `activities.csv` is read automatically, which tells run-heatmap which files are runs. |
-| **Garmin Connect** | Account settings → *Data Management* → *Export Your Data*. Pass the downloaded `.zip` as it is: the FIT files in the zips inside `DI_CONNECT/DI-Connect-Uploaded-Files` are found automatically. |
-| **Apple Health** | Health app → profile picture → *Export All Health Data*. Unzip and pass `apple_health_export/workout-routes`. |
-| **Others** (Coros, Polar, Suunto, Runkeeper, Nike Run Club via third-party tools, …) | Anything that gives you GPX, TCX or FIT works. |
+| **Strava** | Settings → My Account → *Download or Delete Your Account* → *Request your archive*. Drop in the `.zip`. |
+| **Garmin Connect** | Account settings → *Data Management* → *Export Your Data*. Drop in the `.zip` as it is. |
+| **Apple Health** | Health app → profile picture → *Export All Health Data*. Unzip it and drop in `apple_health_export/workout-routes`. |
+| **Others** (Coros, Polar, Suunto, …) | Any GPX, TCX or FIT files work. |
 
-By default only runs are drawn (`--sport run`). Files that don't record a
-sport, or only say `generic`, are kept. Use `--sport all` to include everything, `--sport ride` for
-cycling, or `--strict-sport` to drop files with no sport recorded.
+## Putting it on a web server
 
-## Options that matter most
+Clone the repository straight into your web server's document folder:
 
-| Option | What it does |
+```sh
+cd /path/to/htdocs            # or /var/www/html, etc.
+git clone https://github.com/woodyjeffay/heatmap.git heatmap
+```
+
+Then open `http://localhost/heatmap/` (or `https://your-domain/heatmap/`).
+To update later, run `git pull` inside that folder.
+
+It has to come from a web server. Double-clicking `index.html` won't work,
+because browsers only run this kind of page (JavaScript modules) when it
+comes from a server. To test without Apache, run this in the folder and
+open http://localhost:8000:
+
+```sh
+python3 -m http.server 8000
+```
+
+## Street map API keys
+
+The routes are drawn over a dark street map, and that map comes from a
+tile service. **Since 23 September 2026, CARTO's maps (the default) need a
+free API key.** Without one, every map tile just says "API KEY REQUIRED".
+Your routes and posters still work, just without the streets underneath.
+
+1. Get a free key at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/).
+2. Paste it into [`config.js`](config.js):
+
+   ```js
+   mapKeys: {
+     carto: "paste-your-carto-key-here",
+     stadia: "",
+     maptiler: "",
+   },
+   ```
+
+3. Reload the page. Every visitor now gets the street map without needing a
+   key of their own.
+
+Other maps you can choose in the page (set the default with `defaultMap` in
+`config.js`):
+
+| Map | Key |
 |---|---|
-| `--region auto` | *(default)* Frames the city where most of your activities are. A single holiday run abroad won't shrink your home streets to a dot. |
-| `--region all` | Fits every activity, anywhere in the world. |
-| `--region S,W,N,E` | An exact bounding box in degrees, e.g. `51.45,-0.2,51.55,0.0`. |
-| `--center LAT,LON --radius KM` | A square map centred on a point. |
-| `--poster SIZE` | Page layout with margins, title and a stats line. Sizes: `a4`–`a0`, `letter`, `tabloid`, `12x18`, `18x24`, `24x36`, `square`, or a custom size like `50x70cm` or `16x20in`. Add `--landscape`, `--full-bleed` and `--dpi`. |
-| `--palette` | `fire` (default), `ice`, `neon`, `strava`, `mono`, or `ink` / `risograph` for light paper. |
-| `--scale` | How run counts become brightness: `log` (default, balanced), `linear` (only the busiest routes stand out), `equalize` (uses the whole colour ramp). |
-| `--glow` | Halo strength. `0` gives crisp lines; `1.5` gives more neon. |
-| `--line-width` | Line width in pixels. By default it scales with the image size. |
-| `--basemap` | The street map under your runs. `auto` *(default)* uses CARTO's dark map, or its light one for the `ink` / `risograph` palettes. Dark maps are brightened automatically so their streets show. Other choices: `none` (runs only), `carto-dark`, `carto-light`, `osm`, `stadia-dark`, `maptiler-dark` (use `--map-key`), or any `{z}/{x}/{y}` tile URL. Tiles are downloaded once and cached in `~/.cache/run-heatmap`, and an attribution line is added. |
-| `--basemap-brightness` | Brighten (`1.5`) or darken (`0.7`) the street map. |
-| `--trim-ends M` | **Privacy.** Hides the first and last M metres of every activity, so your front door isn't marked on a poster you share. |
-| `--since / --until` | Only activities between two dates (`YYYY-MM-DD`), e.g. one poster per year. |
-| `--title / --subtitle` | Poster text. The subtitle defaults to e.g. `421 RUNS · 3,310 KM · 2019 – 2022`; pass `--subtitle ""` to hide it. |
+| CARTO dark / light *(default)* | Free key from [carto.com](https://carto.com/basemaps/apikey/). |
+| Stadia dark | None on `localhost`. On a public site, add your domain (or get a key) at [stadiamaps.com](https://stadiamaps.com). |
+| MapTiler dark | Free key from [maptiler.com](https://cloud.maptiler.com/account/keys/). |
+| None | No street map, just the glowing runs on black. No key needed. |
 
-Run `run-heatmap --help` for everything else.
+## Files
 
-## Printing tips
-
-- 300 dpi is standard for prints you'll look at up close. At A2 that's
-  about 5000 × 7000 px and takes around 15 seconds to render.
-- Dark posters look best on matte paper. For home printers, `ink` on
-  a cream background uses much less ink.
-- If lines look too thin on a big print, raise `--line-width` (e.g. `4`–`6`
-  at A1).
+```
+index.html        the page
+config.js         map API keys and the default map (edit this one)
+css/app.css
+js/
+├── app.js        page wiring
+├── parse.js      GPX / TCX / FIT / zip / Strava csv reading
+├── geo.js        map projection and framing
+├── map.js        the interactive glowing map
+└── heat.js       poster rendering
+vendor/           Leaflet (maps) and fflate (unzipping)
+docs/             README images
+```
 
 ## How it works
 
-1. **Parse**: GPX, TCX and FIT files are read into lists of lat/lon
-   segments. Where GPS points jump more than `--max-gap` metres apart (signal
-   loss, or pausing and moving), the line is split so no straight jumps
-   cross the map.
-2. **Project**: points are projected with Web Mercator, the projection web
-   maps use, so the result lines up with any tile basemap.
-3. **Accumulate**: each activity is drawn once onto its own mask and added
-   to a counter image. Each pixel ends up counting how many runs passed
-   through it. Running the same loop three times in one run counts once.
-4. **Tone map**: counts become intensities on a log scale, clipped at the
-   99.5th percentile, so routes you ran once stay visible next to routes you
-   ran hundreds of times.
-5. **Glow & colour**: two blurred copies of the lines form a halo. The
-   intensity picks a colour from the palette, and the result is blended onto
-   the background (or basemap).
+1. **Parse.** GPX, TCX and FIT files are read into lists of latitude and
+   longitude points. Where the GPS jumps a long way (signal loss, or a pause
+   and move), the line is split so no straight jumps cross the map.
+2. **Project.** Points use Web Mercator, the same projection as web maps,
+   so the routes line up with the street map.
+3. **Accumulate.** Each run is drawn once and added to a counter, so every
+   pixel counts how many runs passed through it. Running the same loop three
+   times in one run counts once.
+4. **Tone map.** Counts become brightness on a log scale, so a route you ran
+   once stays visible next to one you ran hundreds of times.
+5. **Glow and colour.** Blurred copies of the lines make the halo, and the
+   brightness picks a colour from the palette.
 
-## Development
+## Browser notes
 
-```sh
-pip install -e '.[dev]'
-pytest
-```
+- Works in current Chrome, Edge, Firefox and Safari.
+- Big posters use a lot of memory. A2 at 300 dpi is about 35 million pixels.
+  On phones and iPads, Safari may refuse sizes that large, and the page will
+  ask for a lower quality.
+- Very large exports (several GB) work best added as an unzipped folder.
