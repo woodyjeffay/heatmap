@@ -41,9 +41,7 @@ The default map Stadia does not require an API key. However CARTO and MapTiler d
 | Map | Key |
 |---|---|
 | CARTO dark / light *(default)* | Free key from [carto.com](https://carto.com/basemaps/apikey/). |
-| Stadia dark | None on `localhost`. On a public site, add your domain (or get a key) at [stadiamaps.com](https://stadiamaps.com). |
 | MapTiler dark | Free key from [maptiler.com](https://cloud.maptiler.com/account/keys/). |
-| None | No street map, just the glowing runs on black. No key needed. |
 
 2. Paste it into [`config.js`](config.js):
 
