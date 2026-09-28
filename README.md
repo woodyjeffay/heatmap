@@ -1,7 +1,5 @@
 # Run Heatmap
 
-A web page that shows every run you've ever done on one glowing map.
-
 Drop in your files from Strava, Garmin, or another source and every route is drawn on a map. The routes you run more frequently glow brightest.
 
 ### Get your GPS files
