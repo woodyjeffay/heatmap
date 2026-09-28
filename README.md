@@ -36,12 +36,17 @@ python3 -m http.server 8000
 
 ## Street map API keys
 
-The routes are drawn over a dark street map, and that map comes from a
-tile service. **CARTO's maps (the default) need a
-free API key.** Without one, every map tile just says "API KEY REQUIRED".
-Your routes and posters still work, just without the streets underneath.
+The default map Stadia does not require an API key. However CARTO and MapTiler do.
 
-1. Get a free key at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/).
+1. Get your free key here:
+
+| Map | Key |
+|---|---|
+| CARTO dark / light *(default)* | Free key from [carto.com](https://carto.com/basemaps/apikey/). |
+| Stadia dark | None on `localhost`. On a public site, add your domain (or get a key) at [stadiamaps.com](https://stadiamaps.com). |
+| MapTiler dark | Free key from [maptiler.com](https://cloud.maptiler.com/account/keys/). |
+| None | No street map, just the glowing runs on black. No key needed. |
+
 2. Paste it into [`config.js`](config.js):
 
    ```js
@@ -51,19 +56,6 @@ Your routes and posters still work, just without the streets underneath.
      maptiler: "",
    },
    ```
-
-3. Reload the page. Every visitor now gets the street map without needing a
-   key of their own.
-
-Other maps you can choose in the page (set the default with `defaultMap` in
-`config.js`):
-
-| Map | Key |
-|---|---|
-| CARTO dark / light *(default)* | Free key from [carto.com](https://carto.com/basemaps/apikey/). |
-| Stadia dark | None on `localhost`. On a public site, add your domain (or get a key) at [stadiamaps.com](https://stadiamaps.com). |
-| MapTiler dark | Free key from [maptiler.com](https://cloud.maptiler.com/account/keys/). |
-| None | No street map, just the glowing runs on black. No key needed. |
 
 ## Files
 
