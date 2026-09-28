@@ -105,9 +105,3 @@ docs/             README images
   On phones and iPads, Safari may refuse sizes that large, and the page will
   ask for a lower quality.
 - Very large exports (several GB) work best added as an unzipped folder.
-
-## History
-
-This started as a Python command-line tool, which was removed when the
-website became the product. It's still in the git history, before the commit
-that moved the website to the top level.
