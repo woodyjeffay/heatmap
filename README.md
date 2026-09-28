@@ -57,21 +57,6 @@ Your routes and posters still work, just without the streets underneath.
 3. Reload the page. Every visitor now gets the street map without needing a
    key of their own.
 
-Things to know:
-
-- **The key is public either way.** The browser has to download `config.js`
-  to use the key, so anyone who looks at the page's files can see it. That's
-  normal for map keys. If CARTO lets you restrict the key to your website's
-  address, do that, so others can't use up your quota.
-- **Think twice before committing it.** If this repository is public and
-  you commit `config.js` with your key, the key is on GitHub too. You can
-  edit `config.js` only on the server, and run
-  `git update-index --skip-worktree config.js` there so `git pull` and
-  `git status` leave your edit alone.
-- **Visitors can use their own key.** If `config.js` has no key, the page
-  asks for one in step 3. A visitor's key is saved only in their own browser
-  and overrides the site's key.
-
 Other maps you can choose in the page (set the default with `defaultMap` in
 `config.js`):
 
