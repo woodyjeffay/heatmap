@@ -16,5 +16,5 @@ window.RUN_HEATMAP_CONFIG = {
 
   // The street map selected when someone first opens the page:
   // "carto-dark", "carto-light", "stadia-dark", "maptiler-dark" or "none".
-  defaultMap: "carto-dark",
+  defaultMap: "stadia-dark",
 };
