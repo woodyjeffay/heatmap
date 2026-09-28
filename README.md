@@ -48,8 +48,7 @@ The default map Stadia does not require an API key. However CARTO and MapTiler d
    ```js
    mapKeys: {
      carto: "paste-your-carto-key-here",
-     stadia: "",
-     maptiler: "",
+     maptiler: "paste-your-maptiler-key-here",
    },
    ```
 
