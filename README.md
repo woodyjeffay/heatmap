@@ -2,9 +2,7 @@
 
 A web page that shows every run you've ever done on one glowing map.
 
-Drop in the export you downloaded from Strava, Garmin or another service, and
-every route is drawn on top of the others. Streets you ran once show as a
-faint trace, and the ones you run every week glow brightest.
+Drop in your files from Strava, Garmin, or another source and every route is drawn on a map. The routes you run more frequently glow brightest.
 
 ### Get your GPS files
 
