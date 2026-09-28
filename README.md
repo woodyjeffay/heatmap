@@ -8,14 +8,6 @@ faint trace, and the ones you run every week glow brightest, like a long
 exposure photo of your running life. Frame the part you like and download it
 as a print-ready poster.
 
-<p align="center">
-  <img src="docs/poster-fire.png" width="32%" alt="Fire palette poster">
-  <img src="docs/poster-ice.png" width="32%" alt="Ice palette poster">
-  <img src="docs/poster-ink.png" width="32%" alt="Ink palette poster on cream paper">
-</p>
-
-<sub>These previews use made-up runs.</sub>
-
 ## The idea
 
 - **Your files never leave your computer.** The whole app runs in the
