@@ -72,7 +72,9 @@ js/
 ├── parse.js      GPX / TCX / FIT / zip / Strava csv reading
 ├── geo.js        map projection and framing
 ├── map.js        the interactive glowing map
-└── heat.js       poster rendering
+├── heat.js       poster rendering
+├── boroughs.js   which London boroughs you've run in
+└── london-boroughs.js  borough boundaries (from OpenStreetMap)
 vendor/           Leaflet (maps) and fflate (unzipping)
 ```
 
