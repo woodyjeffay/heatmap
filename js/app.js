@@ -4,6 +4,7 @@ import { BBox, bboxOfActivities, densestCluster } from "./geo.js";
 import { cleanActivity, collectSources, parseActivity } from "./parse.js";
 import { KEY_SERVICES, PALETTES, TILE_PROVIDERS, paperPixels, posterLayout, renderPoster, tileUrl } from "./heat.js";
 import { RunMap } from "./map.js";
+import { AREAS, BOROUGH_COUNT, boroughStats, isBorough } from "./boroughs.js";
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -141,6 +142,7 @@ function refresh(fitView = false) {
   $("stats").textContent = statsLine(shown, sport) || "Nothing matches these filters.";
   $("subtitle").placeholder = statsLine(shown, sport).toUpperCase();
   runMap.setActivities(shown);
+  updateBoroughs(sport);
   if (fitView) zoomHome();
   updateFrame();
 }
@@ -163,6 +165,56 @@ function zoomHome() {
 for (const id of ["sport", "trim", "since", "until"]) $(id).addEventListener("change", () => refresh(id === "sport"));
 $("zoom-home").addEventListener("click", zoomHome);
 $("zoom-all").addEventListener("click", () => shown.length && runMap.fit(bboxOfActivities(shown).atLeastKm(1).pad(0.04)));
+
+// ---------------------------------------------------------------- London boroughs
+
+let boroughsEverShown = false;
+
+function updateBoroughs(sport) {
+  const stats = boroughStats(shown);
+  const been = AREAS.filter((a) => isBorough(a.name) && stats.get(a.name).runs > 0);
+  const anyLondon = [...stats.values()].some((s) => s.runs > 0);
+  // Only offer the card once some activity has touched London.
+  boroughsEverShown ||= anyLondon;
+  $("borough-card").hidden = !boroughsEverShown;
+  const noun = { run: "runs", ride: "rides", walk: "walks" }[sport] || "activities";
+  runMap.setBoroughs(stats, boroughsEverShown && $("show-boroughs").checked, noun);
+  if (!boroughsEverShown) return;
+
+  $("borough-count").textContent = been.length;
+  $("borough-total").textContent = BOROUGH_COUNT;
+  $("borough-bar").style.width = `${(been.length / BOROUGH_COUNT) * 100}%`;
+  const left = BOROUGH_COUNT - been.length;
+  const city = stats.get("City of London").runs > 0;
+  $("borough-sub").textContent = (left ? `${left} to go.` : "All 32. Every borough done!") + (city ? " Plus the City of London." : "");
+
+  const list = $("borough-list");
+  list.innerHTML = "";
+  for (const a of AREAS) {
+    const st = stats.get(a.name);
+    const li = document.createElement("li");
+    li.className = (st.runs ? "been" : "") + (isBorough(a.name) ? "" : " city");
+    li.title = st.runs ? `${a.name}: ${st.runs} ${noun}, ${(st.metres / 1000).toFixed(1)} km` : `${a.name}: not yet`;
+    const mark = Object.assign(document.createElement("span"), { className: "mark", textContent: st.runs ? "✓" : "○" });
+    const nm = Object.assign(document.createElement("span"), { className: "nm", textContent: a.name });
+    const km = Object.assign(document.createElement("span"), { className: "km", textContent: !st.runs ? "" : st.metres < 500 ? "<1 km" : `${Math.round(st.metres / 1000)} km` });
+    li.append(mark, nm, km);
+    li.addEventListener("click", () => {
+      if (!$("show-boroughs").checked) { $("show-boroughs").checked = true; runMap.setBoroughs(stats, true, noun); }
+      runMap.fitBorough(a.name);
+    });
+    list.append(li);
+  }
+}
+
+$("show-boroughs").addEventListener("change", () => refreshBoroughLayer());
+function refreshBoroughLayer() {
+  runMap.setBoroughs(runMap.boroughStats, $("show-boroughs").checked, runMap.boroughNoun);
+}
+$("zoom-london").addEventListener("click", () => {
+  if (!$("show-boroughs").checked) { $("show-boroughs").checked = true; refreshBoroughLayer(); }
+  runMap.map.fitBounds([[51.28, -0.51], [51.70, 0.34]]);
+});
 
 // ---------------------------------------------------------------- map style
 

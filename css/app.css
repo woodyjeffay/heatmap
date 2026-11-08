@@ -85,6 +85,28 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 
 .foot { color: #6d6b76; font-size: 11px; margin-top: auto; padding-top: 6px; }
 
+/* ---------------------------------------------------------------- boroughs */
+.borough-score { margin: 0 0 8px; font-size: 15px; }
+.borough-score strong { font-size: 28px; color: #3ddc97; margin-right: 2px; }
+#borough-bar { background: #3ddc97; }
+.check { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; font-size: 13px; }
+.borough-list {
+  list-style: none; margin: 8px 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px;
+  font-size: 12.5px;
+}
+.borough-list li { display: flex; gap: 6px; align-items: baseline; cursor: pointer; padding: 2px 4px; border-radius: 5px; min-width: 0; }
+.borough-list li:hover { background: #24242e; }
+.borough-list li .mark { width: 12px; flex: none; color: #55556a; }
+.borough-list li .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.borough-list li .km { margin-left: auto; color: #6d6b76; font-variant-numeric: tabular-nums; flex: none; }
+.borough-list li.been .mark { color: #3ddc97; }
+.borough-list li.been .nm { color: var(--text); }
+.borough-list li.city { font-style: italic; }
+.borough-label {
+  background: rgba(18, 18, 23, .9); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; color: var(--text); font-size: 12.5px; pointer-events: none;
+}
+
 /* ---------------------------------------------------------------- map */
 .stage { position: relative; min-height: 0; }
 #map { position: absolute; inset: 0; background: #050508; }

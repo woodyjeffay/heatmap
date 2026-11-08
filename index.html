@@ -64,6 +64,17 @@
       </div>
     </section>
 
+    <section class="card" id="borough-card" hidden>
+      <h2><span class="step">★</span> London boroughs</h2>
+      <p class="borough-score"><strong id="borough-count">0</strong> of <span id="borough-total">32</span> boroughs</p>
+      <div class="bar"><div id="borough-bar"></div></div>
+      <p class="hint" id="borough-sub"></p>
+      <label class="check"><input type="checkbox" id="show-boroughs" checked> Show boroughs on the map</label>
+      <ul class="borough-list" id="borough-list"></ul>
+      <p class="hint">Green: you've been there. Click a borough to zoom to it. The City of London isn't one of the 32 boroughs, so it's listed but not counted. Uses the activities, dates and start/finish setting from step 2.</p>
+      <button class="btn small" id="zoom-london">Zoom to London</button>
+    </section>
+
     <section class="card" id="map-card" hidden>
       <h2><span class="step">3</span> Map style</h2>
       <div class="grid">
@@ -140,7 +151,7 @@
       </div>
     </section>
 
-    <footer class="foot">Map data © OpenStreetMap contributors. Street maps by CARTO, Stadia Maps or MapTiler.</footer>
+    <footer class="foot">Map data and borough boundaries © OpenStreetMap contributors. Street maps by CARTO, Stadia Maps or MapTiler.</footer>
   </aside>
 
   <main class="stage">

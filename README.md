@@ -11,6 +11,15 @@ Drop in your files from Strava, Garmin, or another source and every route is dra
 | **Apple Health** | Health app → profile picture → *Export All Health Data*. Unzip it and drop in `apple_health_export/workout-routes`. |
 | **Others** (Coros, Polar, Suunto, …) | Any GPX, TCX or FIT files work. |
 
+### London boroughs
+
+If any of your runs are in London, a **London boroughs** panel appears. It counts
+how many of the 32 boroughs you've run in (the City of London is listed too, but
+isn't one of the 32), overlays the borough boundaries on the map with the ones
+you've visited in green, and shows the distance you've covered in each. Hover a
+borough on the map, or click one in the list, to see it. It follows the filters
+in step 2, so you can count runs only, or a single year.
+
 ## Putting it on a web server
 
 Clone the repository straight into your web server's document folder:

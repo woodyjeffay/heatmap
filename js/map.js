@@ -3,6 +3,7 @@
 
 import { BBox } from "./geo.js";
 import { TILE_PROVIDERS, tileUrl } from "./heat.js";
+import { AREAS, areaAt } from "./boroughs.js";
 
 const L = window.L;
 
@@ -35,6 +36,65 @@ export class RunMap {
     this.tiles = null;
     this.frame = null;
     this.style = { color: "#ff6a1f", opacity: 0.2, weight: 2 };
+
+    // London boroughs sit just under the runs, so the glow stays bright.
+    this.map.createPane("boroughs").style.zIndex = 390;
+    this.boroughRenderer = L.svg({ pane: "boroughs", padding: 0.5 });
+    this.boroughs = L.layerGroup();
+    this.boroughShapes = new Map();
+    this.boroughStats = null;
+    this.hovered = null;
+    this.label = L.control({ position: "topright" });
+    this.label.onAdd = () => Object.assign(L.DomUtil.create("div", "borough-label"), { hidden: true });
+    this.map.on("mousemove", (e) => this._hover(areaAt(e.latlng.lat, e.latlng.lng, this.hovered)));
+    this.map.on("mouseout", () => this._hover(null));
+  }
+
+  /** Draw the borough outlines, tinting the ones in `stats` that you've been to. */
+  setBoroughs(stats, visible, noun = "runs") {
+    this.boroughStats = stats;
+    this.boroughNoun = noun;
+    if (!this.boroughShapes.size) {
+      for (const a of AREAS) {
+        this.boroughShapes.set(a.name, L.polygon(a.latLngs(), {
+          renderer: this.boroughRenderer, interactive: false, weight: 1.2,
+        }).addTo(this.boroughs));
+      }
+    }
+    for (const [name, shape] of this.boroughShapes) {
+      const been = stats && stats.get(name).runs > 0;
+      shape.setStyle(been
+        ? { color: "#3ddc97", opacity: 0.85, fillColor: "#3ddc97", fillOpacity: 0.16, dashArray: null }
+        : { color: "#8a8a99", opacity: 0.7, fillColor: "#000", fillOpacity: 0.25, dashArray: "4 4" });
+    }
+    if (visible) { this.boroughs.addTo(this.map); this.label.addTo(this.map); }
+    else { this.boroughs.remove(); this.label.remove(); this._hover(null); }
+  }
+
+  fitBorough(name) {
+    const shape = this.boroughShapes.get(name);
+    if (shape) this.map.fitBounds(shape.getBounds(), { padding: [30, 30] });
+    const area = AREAS.find((a) => a.name === name);
+    if (area) this._hover(area, true);
+  }
+
+  _hover(area, force = false) {
+    if (!this.map.hasLayer(this.boroughs)) return;
+    if (area === this.hovered && !force) return;
+    if (this.hovered) this.boroughShapes.get(this.hovered.name).setStyle({ weight: 1.2 });
+    this.hovered = area;
+    const el = this.label.getContainer();
+    if (!area) { if (el) el.hidden = true; return; }
+    this.boroughShapes.get(area.name).setStyle({ weight: 3 });
+    const st = this.boroughStats && this.boroughStats.get(area.name);
+    if (el) {
+      el.hidden = false;
+      el.innerHTML = "";
+      const b = document.createElement("strong");
+      b.textContent = area.name;
+      el.append(b, document.createElement("br"),
+        st && st.runs ? `${st.runs.toLocaleString()} ${st.runs === 1 ? this.boroughNoun.replace(/s\b/g, "") : this.boroughNoun} · ${(st.metres / 1000).toFixed(1)} km` : "Not been here yet");
+    }
   }
 
   /** Returns an error message if the chosen map can't be used, else null. */
